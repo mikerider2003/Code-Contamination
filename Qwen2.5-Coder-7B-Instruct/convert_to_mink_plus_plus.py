@@ -149,16 +149,16 @@ def stats(data):
 
     mkpp_df = pd.DataFrame(mkpp)
     print(mkpp_df.describe())
-    generate_boxplot(mkpp_df)
-    outliar(mkpp_df)
 
     pass_ratio_df = pd.DataFrame(pass_ratio)
     pass_ratio_df.columns = ['Pass Ratio']
     print(pass_ratio_df.describe())
+    
+    generate_boxplot(mkpp_df, pass_ratio_df.mean().iloc[0])
 
     return 1
 
-def generate_boxplot(df):
+def generate_boxplot(df, test_pass):
     # df = df.drop(index=19) # To remove ouliar at row 19 OAIHE
 
     sns.set(style="whitegrid")
@@ -172,6 +172,15 @@ def generate_boxplot(df):
     plt.xlabel('Threshold Levels')
     plt.ylabel('mink++ Scores')
     plt.title('Distribution of mink++ Scores Across Threshold Levels')
+
+    plt.text(
+    0.94,  # X position as a fraction of the figure width
+    0.25,  # Y position as a fraction of the figure height
+    f"{test_pass:.2%}",  # The text to display
+    fontsize=72,  # Font size
+    ha='right',  # Horizontal alignment
+    transform=plt.gcf().transFigure  # Transform to figure coordinates
+    )
 
     plt.tight_layout()
     plt.savefig('boxplot.pdf')
