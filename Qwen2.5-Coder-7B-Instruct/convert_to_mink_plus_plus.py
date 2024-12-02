@@ -187,20 +187,60 @@ def generate_boxplot(df, test_pass):
 
     return
 
+def plot_distributions(data_1, data_2):
+    mkpp_d1 = []
+    mkpp_d2 = []
+
+    for task in data_1:
+        if "mkpp" in task:
+            mkpp_d1.append(task["mkpp"])
+    for task in data_2:
+        if "mkpp" in task:
+            mkpp_d2.append(task["mkpp"])
+
+    df_1 = pd.DataFrame(mkpp_d1)
+    df_2 = pd.DataFrame(mkpp_d2)
+
+    df_2 = df_2.drop(index=19)  # To remove ouliar at row 19 OAIHE
+
+    print(df_1.shape)
+    print(df_2.shape)
+
+    fig, axs = plt.subplots(2, 5, figsize=(20, 8))
+    fig.tight_layout(pad=5)
+
+    columns = df_1.columns
+    bins = 30
+
+    for i, ax in enumerate(axs.flat):
+        if i < len(columns):
+            col = columns[i]
+
+            sns.histplot(df_1[col], bins=bins, kde=True, stat='density', color='red', label='mbpp', ax=ax, alpha=0.5)
+            sns.histplot(df_2[col], bins=bins, kde=True, stat='density', color='blue', label='OpenAI HumanEval', ax=ax, alpha=0.5)
+
+            ax.set_title(f"Distribution of {col}")
+            ax.legend()
+
+
+    plt.savefig('distribution_plot.pdf')
+
+    return 1
 
 # Example usage
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Load saved data from a JSON file.")
-    parser.add_argument('-f', '--filename', type=str, default='output.json', help='The name of the file to load data from.')
     
-    args = parser.parse_args()
-    
-    data = load_saved_data(args.filename)
+    data_1 = load_saved_data("output_1 copy.json")
+    data_2 = load_saved_data("output_2 copy.json")
 
-    if data:
+
+    if data_1 and data_2:
         # Clear up Code + Testing + Mink_plus_plus
-        data = apply_on_dataset(data)
+        data_1 = apply_on_dataset(data_1)
+        data_2 = apply_on_dataset(data_2)
 
-        # Stats
-        stats(data)
+        plot_distributions(data_1, data_2)
+
+
+
 
