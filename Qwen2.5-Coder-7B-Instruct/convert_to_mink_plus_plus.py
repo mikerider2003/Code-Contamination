@@ -135,59 +135,8 @@ def apply_mink_plus_plus(task, ratio_values=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 
     
     return scores
 
-def stats(data):
-    pass_ratio = []
-    mkpp = []
 
-    # Extract info
-    for task in data:
-        # Extraxt mbpp vals
-        mkpp.append(task["mkpp"])
-
-        # Extract passing ratios
-        pass_ratio.append(task["test_result"][2])
-
-    mkpp_df = pd.DataFrame(mkpp)
-    print(mkpp_df.describe())
-
-    pass_ratio_df = pd.DataFrame(pass_ratio)
-    pass_ratio_df.columns = ['Pass Ratio']
-    print(pass_ratio_df.describe())
-    
-    generate_boxplot(mkpp_df, pass_ratio_df.mean().iloc[0])
-
-    return 1
-
-def generate_boxplot(df, test_pass):
-    # df = df.drop(index=19) # To remove ouliar at row 19 OAIHE
-
-    sns.set(style="whitegrid")
-
-    plt.figure(figsize=(12, 6))
-
-    sns.boxplot(data=df)
-
-    plt.xticks(rotation=45)
-
-    plt.xlabel('Threshold Levels')
-    plt.ylabel('mink++ Scores')
-    plt.title('Distribution of mink++ Scores Across Threshold Levels')
-
-    plt.text(
-    0.94,  # X position as a fraction of the figure width
-    0.25,  # Y position as a fraction of the figure height
-    f"{test_pass:.2%}",  # The text to display
-    fontsize=72,  # Font size
-    ha='right',  # Horizontal alignment
-    transform=plt.gcf().transFigure  # Transform to figure coordinates
-    )
-
-    plt.tight_layout()
-    plt.savefig('boxplot.pdf')
-
-    return
-
-def plot_distributions(data_1, data_2):
+def plot_distributions_two_datasets(data_1, data_2, title=""):
     mkpp_d1 = []
     mkpp_d2 = []
 
@@ -203,9 +152,6 @@ def plot_distributions(data_1, data_2):
 
     df_2 = df_2.drop(index=19)  # To remove ouliar at row 19 OAIHE
 
-    print(df_1.shape)
-    print(df_2.shape)
-
     fig, axs = plt.subplots(2, 5, figsize=(20, 8))
     fig.tight_layout(pad=5)
 
@@ -219,18 +165,86 @@ def plot_distributions(data_1, data_2):
             sns.histplot(df_1[col], bins=bins, kde=True, stat='density', color='red', label='mbpp', ax=ax, alpha=0.5)
             sns.histplot(df_2[col], bins=bins, kde=True, stat='density', color='blue', label='OpenAI HumanEval', ax=ax, alpha=0.5)
 
+            # sns.kdeplot(df_1[col], ax=ax, color='red', label='mbpp', alpha=0.7, linewidth=2)
+            # sns.kdeplot(df_2[col], ax=ax, color='blue', label='OpenAI HumanEval', alpha=0.7, linewidth=2)
+            # sns.rugplot(df_1[col], ax=ax, color='red', alpha=0.5)
+            # sns.rugplot(df_2[col], ax=ax, color='blue', alpha=0.5)
+
             ax.set_title(f"Distribution of {col}")
             ax.legend()
 
-
+    plt.suptitle(f"Distribution of two different datasets | {title}")
     plt.savefig('distribution_plot.pdf')
 
+    return 1
+
+def success_rate(data):
+    test_result = []
+
+    for task in data:
+        test_result.append(task["test_result"])
+    
+    df = pd.DataFrame(test_result)
+    filtered_df_p = df[df.iloc[:, 2] == 1]
+    
+    full_working_code = len(filtered_df_p) / len(df)
+    
+    # filtered_df_f = df[df.iloc[:, 2] != 1]
+    # average_pass_rate_when_fail = filtered_df_f.iloc[:, 2].mean()
+    # print(average_pass_rate_when_fail)
+
+    return full_working_code
+
+def plot_d_pass_vs_fail(data, title=""):
+    df = []
+
+    for task in data:
+        mink = []
+        mink.append(task["test_result"][2])
+        for mkpp in task['mkpp'].values():
+            mink.append(mkpp)
+        
+        df.append(mink)
+    
+    column_names = ["test_result"] + list(task["mkpp"].keys())
+    
+    df = pd.DataFrame(df, columns=column_names)
+
+    pass_df = df[df.iloc[:, 0] == 1].drop(df.columns[0], axis=1)
+    fail_df = df[df.iloc[:, 0] != 1].drop(df.columns[0], axis=1)
+
+    # print(pass_df)
+    # print(fail_df)
+
+    fig, axs = plt.subplots(2, 5, figsize=(20, 8))
+    fig.tight_layout(pad=5)
+
+    columns = pass_df.columns
+    bins = 30
+
+    for i, ax in enumerate(axs.flat):
+        if i < len(columns):
+            col = columns[i]
+
+            sns.histplot(pass_df[col], bins=bins, kde=True, stat='density', color='red', label='Pass', ax=ax, alpha=0.5)
+            sns.histplot(fail_df[col], bins=bins, kde=True, stat='density', color='blue', label='Fail', ax=ax, alpha=0.5)
+
+            ax.set_title(f"Distribution of {col}")
+            ax.legend()
+    
+    plt.suptitle(f"Pass vs Fail | {title}")
+    plt.savefig('ds_plt.pdf')
     return 1
 
 # Example usage
 if __name__ == "__main__":
     
+    # MBPP Train
     data_1 = load_saved_data("output_1 copy.json")
+
+    # MBPP Test
+
+    # HumanEval Test
     data_2 = load_saved_data("output_2 copy.json")
 
 
@@ -239,7 +253,17 @@ if __name__ == "__main__":
         data_1 = apply_on_dataset(data_1)
         data_2 = apply_on_dataset(data_2)
 
-        plot_distributions(data_1, data_2)
+        # MBPP | Train | Pass vs Fail 
+        plot_d_pass_vs_fail(data_1, title="MBPP | Train")
+
+        # MBPP | Test | Pass vs Fail 
+
+        # MBPP | Train vs Test
+
+        # MBPP | Train vs HumanEval | Test
+        plot_distributions_two_datasets(data_1, data_2, title="MBPP | Train vs HumanEval | Test")
+
+        # print(f"Mbpp: {success_rate(data_1):.2%}\nOpenAI HumanEval: {success_rate(data_2):.2%}")
 
 
 
