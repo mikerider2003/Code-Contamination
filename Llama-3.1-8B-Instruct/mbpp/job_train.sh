@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=kpp_run         
-#SBATCH --output=kpp_run.out         
-#SBATCH --error=kpp_run.err          
+#SBATCH --job-name=mbpp_train         
+#SBATCH --output=mbpp_train.out         
+#SBATCH --error=mbpp_train.err          
 #SBATCH --time=04:00:00             
 #SBATCH --partition=gpu
 #SBATCH --ntasks=1                   
@@ -15,4 +15,4 @@ conda init
 source ~/.bashrc
 conda activate env2
 python --version
-python run_mbpp_alibaba_model-7b.py
+python run.py train

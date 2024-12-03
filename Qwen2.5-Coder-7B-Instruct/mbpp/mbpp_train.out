@@ -1,0 +1,14 @@
+no change     /software.9/software/Anaconda3/2023.09-0/condabin/conda
+no change     /software.9/software/Anaconda3/2023.09-0/bin/conda
+no change     /software.9/software/Anaconda3/2023.09-0/bin/conda-env
+no change     /software.9/software/Anaconda3/2023.09-0/bin/activate
+no change     /software.9/software/Anaconda3/2023.09-0/bin/deactivate
+no change     /software.9/software/Anaconda3/2023.09-0/etc/profile.d/conda.sh
+no change     /software.9/software/Anaconda3/2023.09-0/etc/fish/conf.d/conda.fish
+no change     /software.9/software/Anaconda3/2023.09-0/shell/condabin/Conda.psm1
+no change     /software.9/software/Anaconda3/2023.09-0/shell/condabin/conda-hook.ps1
+no change     /software.9/software/Anaconda3/2023.09-0/lib/python3.11/site-packages/xontrib/conda.xsh
+no change     /software.9/software/Anaconda3/2023.09-0/etc/profile.d/conda.csh
+no change     /storage/homefs/ms24r021/.bashrc
+No action taken.
+Python 3.11.10

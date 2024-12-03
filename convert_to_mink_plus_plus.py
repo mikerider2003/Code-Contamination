@@ -136,7 +136,7 @@ def apply_mink_plus_plus(task, ratio_values=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 
     return scores
 
 
-def plot_distributions_two_datasets(data_1, data_2, title=""):
+def plot_distributions_two_datasets(data_1, data_2, title="", legend_labels=("label1", "label2")):
     mkpp_d1 = []
     mkpp_d2 = []
 
@@ -162,8 +162,8 @@ def plot_distributions_two_datasets(data_1, data_2, title=""):
         if i < len(columns):
             col = columns[i]
 
-            sns.histplot(df_1[col], bins=bins, kde=True, stat='density', color='red', label='mbpp', ax=ax, alpha=0.5)
-            sns.histplot(df_2[col], bins=bins, kde=True, stat='density', color='blue', label='OpenAI HumanEval', ax=ax, alpha=0.5)
+            sns.histplot(df_1[col], bins=bins, kde=True, stat='density', color='red', label=legend_labels[0], ax=ax, alpha=0.5)
+            sns.histplot(df_2[col], bins=bins, kde=True, stat='density', color='blue', label=legend_labels[1], ax=ax, alpha=0.5)
 
             # sns.kdeplot(df_1[col], ax=ax, color='red', label='mbpp', alpha=0.7, linewidth=2)
             # sns.kdeplot(df_2[col], ax=ax, color='blue', label='OpenAI HumanEval', alpha=0.7, linewidth=2)
@@ -232,7 +232,7 @@ def plot_d_pass_vs_fail(data, title=""):
             ax.set_title(f"Distribution of {col}")
             ax.legend()
     
-    plt.suptitle(f"Pass vs Fail | {title}")
+    plt.suptitle(f"{title} | Pass vs Fail")
     plt.savefig('ds_plt.pdf')
     return 1
 
@@ -240,30 +240,34 @@ def plot_d_pass_vs_fail(data, title=""):
 if __name__ == "__main__":
     
     # MBPP Train
-    data_1 = load_saved_data("output_1 copy.json")
+    data_1 = load_saved_data("mbpp_train copy.json")
 
     # MBPP Test
+    data_2 = load_saved_data("mbpp_test copy.json")
 
     # HumanEval Test
-    data_2 = load_saved_data("output_2 copy.json")
+    data_3 = load_saved_data("output_2 copy.json")
 
 
     if data_1 and data_2:
         # Clear up Code + Testing + Mink_plus_plus
         data_1 = apply_on_dataset(data_1)
         data_2 = apply_on_dataset(data_2)
+        data_3 = apply_on_dataset(data_3)
 
         # MBPP | Train | Pass vs Fail 
-        plot_d_pass_vs_fail(data_1, title="MBPP | Train")
+        plot_d_pass_vs_fail(data_1, title="MBPP_train")
 
         # MBPP | Test | Pass vs Fail 
+        plot_d_pass_vs_fail(data_2, title="MBPP_test")
 
         # MBPP | Train vs Test
+        plot_distributions_two_datasets(data_1, data_2, title="MBPP_train vs Mbpp_test", legend_labels=("Mbpp_train", "Mbpp_test"))
 
         # MBPP | Train vs HumanEval | Test
-        plot_distributions_two_datasets(data_1, data_2, title="MBPP | Train vs HumanEval | Test")
+        plot_distributions_two_datasets(data_1, data_3, title="MBPP_train vs HumanEval_test", legend_labels=("Mbpp_train", "OpenAI HumanEval_test"))
 
-        # print(f"Mbpp: {success_rate(data_1):.2%}\nOpenAI HumanEval: {success_rate(data_2):.2%}")
+        print(f"Mbpp_train: {success_rate(data_1):.2%}\nMbpp_test: {success_rate(data_2):.2%}\nOpenAI HumanEval_test: {success_rate(data_3):.2%}")
 
 
 

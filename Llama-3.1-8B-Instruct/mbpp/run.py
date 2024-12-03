@@ -5,9 +5,10 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
+import argparse
 
-def convert_huggingface_data_to_list_dic(dataset):
-    dataset = dataset['train']
+def convert_huggingface_data_to_list_dic(dataset, split):
+    dataset = dataset[split]
     all_data = []
     for task in dataset:
         all_data.append(task)
@@ -29,7 +30,7 @@ def enhance_description(data):
         # print(data[t_i]['full_description'])
         # print("\n------------------\n")
 
-def generate_code(data):
+def generate_code(data, output_filename="output.json"):
     # Load the model and tokenizer
     model_name = "Qwen/Qwen2.5-Coder-7B-Instruct"  # Example model
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -38,6 +39,10 @@ def generate_code(data):
 
     with tqdm(total=len(data), desc="Generating Code") as pbar:
         for i in range(len(data)):
+            
+            # TODO: ADJUST Code bellow to work with meta-llama/Llama-3.1-8B-Instruct
+            raise NotImplementedError
+            
             prompt = data[i]['full_description']
 
             messages = [
@@ -93,38 +98,18 @@ def generate_code(data):
             # Decode the generated tokens to get the response
             response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
-            # # Calculate log probabilities for each generated token
-            # log_probs = F.log_softmax(logits, dim=-1)
-
-            # # Extract log probabilities and generated token IDs
-            # generated_log_probs, generated_token_ids = extract_generated_log_probs_and_ids(generated_ids, log_probs)
-
             # Save
             data[i]['mu'] = mu.squeeze(0).cpu().tolist()
             data[i]['sigma'] = sigma.squeeze(0).cpu().tolist()
             data[i]['token_log_probs'] = token_log_probs.cpu().tolist()
             data[i]['token_ids'] = generated_token_ids.cpu().tolist()
             data[i]['generated_code'] = response
-            # data[i]['log_probs'] = generated_log_probs  # List of log probabilities for each token
-            # data[i]['token_ids'] = generated_token_ids
 
             print(data[i])
-            save_data(data[i])
+            save_data(new_data=data[i], filename=output_filename)
 
             pbar.update(1)
 
-def extract_generated_log_probs_and_ids(generated_ids, log_probs):
-    generated_log_probs = []
-    generated_token_ids = []
-    for j in range(generated_ids.shape[1]):  # Iterate over each generated token position
-        token_id = generated_ids[0, j].item()  # Generated token ID at position `j`
-        token_log_prob = log_probs[0, j, token_id].item()  # Log probability of the generated token
-
-        # Store log probability and token ID
-        generated_log_probs.append(token_log_prob)
-        generated_token_ids.append(token_id)
-
-    return generated_log_probs, generated_token_ids
 
 def save_data(new_data, filename='output.json'):
     # Check if file exists
@@ -144,7 +129,14 @@ def save_data(new_data, filename='output.json'):
         json.dump(data, file, indent=4)
 
 if __name__ == "__main__":
-    # Load dataset
-    data_converted = convert_huggingface_data_to_list_dic(load_dataset("google-research-datasets/mbpp", "sanitized"))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("split", help="Choose to use 'train' or 'test' split", type=str, choices=['train', 'test'])
+    
+    args = parser.parse_args()
 
-    generate_code(data_converted)
+    # Load dataset
+    ds = load_dataset("google-research-datasets/mbpp", "sanitized")
+    data_converted = convert_huggingface_data_to_list_dic(dataset=ds, split=args.split)
+
+    # Generate Code
+    generate_code(data=data_converted, output_filename=f"mbpp_{args.split}.json")
