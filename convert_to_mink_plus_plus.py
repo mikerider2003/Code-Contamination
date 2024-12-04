@@ -1,9 +1,14 @@
+import os
 import json
 import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from tqdm import tqdm
+
+import concurrent.futures
+import time
 
 
 def load_saved_data(filename):
@@ -16,25 +21,27 @@ def load_saved_data(filename):
         return []
 
 def apply_on_dataset(data):
-    for task in data:
-        
-        # Clear the code
-        cleared_code = clear_unwanted_code(task["generated_code"])
+    with tqdm(total=len(data), desc="Processing dataset tasks", leave=False) as task_bar:
+        for task in data:        
+            # Clear the code
+            cleared_code = clear_unwanted_code(task["generated_code"])
 
-        # For OpenAI HumanEval there is need to generate test_list
-        if "test_list" not in task:
-            task["test_list"] = create_test_list(task["test"], task["generated_code"])
-        
-        # Test the code
-        test_result = run_tests(cleared_code, task["test_list"])
+            # For OpenAI HumanEval there is need to generate test_list
+            if "test_list" not in task:
+                task["test_list"] = create_test_list(task["test"], task["generated_code"])
+            
+            # Test the code
+            test_result = run_tests(cleared_code, task["test_list"])
 
-        # Find mink++ Scores
-        mkpp = apply_mink_plus_plus(task)
+            # Find mink++ Scores
+            mkpp = apply_mink_plus_plus(task)
 
-        # Save
-        task["cleared_code"] = cleared_code
-        task["test_result"] = test_result
-        task["mkpp"] = mkpp
+            # Save
+            task["cleared_code"] = cleared_code
+            task["test_result"] = test_result
+            task["mkpp"] = mkpp
+
+            task_bar.update(1)
             
     return data
 
@@ -59,6 +66,25 @@ def create_test_list(test, code):
 
     return test_list
 
+def execute_with_timeout(code_snippet, namespace, timeout=30):
+    """
+    Executes a code snippet (using exec) within a specified timeout.
+    """
+    def exec_code():
+        exec(code_snippet, namespace)
+    
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(exec_code)
+            future.result(timeout=timeout)  # Wait for the execution to finish or timeout
+        return True  # Execution succeeded
+    except concurrent.futures.TimeoutError:
+        print(f"Execution timed out after {timeout} seconds.")
+    # except Exception as e:
+    #     print(f"Execution failed with error: {e}")
+    return False  # Execution failed or timed out
+
+
 def run_tests(code, test_list):
     namespace = {}
     passed_tests = 0
@@ -70,6 +96,10 @@ def run_tests(code, test_list):
             try:
                 exec(test, namespace)
                 passed_tests += 1
+
+                # Alrenative because mbpp_test[127] stuck whole code in infinite loop
+                # if execute_with_timeout(test, namespace, timeout=30):
+                #     passed_tests += 1
             except Exception:
                 pass 
     except Exception:
@@ -162,7 +192,7 @@ def plot_distributions_two_datasets(data_1, data_2, title="", legend_labels=("la
         if i < len(columns):
             col = columns[i]
 
-            sns.histplot(df_1[col], bins=bins, kde=True, stat='density', color='red', label=legend_labels[0], ax=ax, alpha=0.5)
+            sns.histplot(df_1[col], bins=bins, kde=True, stat='density', color='orange', label=legend_labels[0], ax=ax, alpha=0.5)
             sns.histplot(df_2[col], bins=bins, kde=True, stat='density', color='blue', label=legend_labels[1], ax=ax, alpha=0.5)
 
             # sns.kdeplot(df_1[col], ax=ax, color='red', label='mbpp', alpha=0.7, linewidth=2)
@@ -174,7 +204,7 @@ def plot_distributions_two_datasets(data_1, data_2, title="", legend_labels=("la
             ax.legend()
 
     plt.suptitle(f"Distribution of two different datasets | {title}")
-    plt.savefig('distribution_plot.pdf')
+    plt.savefig(f"{title} distribution_plot.pdf")
 
     return 1
 
@@ -226,46 +256,78 @@ def plot_d_pass_vs_fail(data, title=""):
         if i < len(columns):
             col = columns[i]
 
-            sns.histplot(pass_df[col], bins=bins, kde=True, stat='density', color='red', label='Pass', ax=ax, alpha=0.5)
-            sns.histplot(fail_df[col], bins=bins, kde=True, stat='density', color='blue', label='Fail', ax=ax, alpha=0.5)
+            sns.histplot(pass_df[col], bins=bins, kde=True, stat='density', color='green', label='Pass', ax=ax, alpha=0.5)
+            sns.histplot(fail_df[col], bins=bins, kde=True, stat='density', color='red', label='Fail', ax=ax, alpha=0.5)
 
             ax.set_title(f"Distribution of {col}")
             ax.legend()
     
     plt.suptitle(f"{title} | Pass vs Fail")
-    plt.savefig('ds_plt.pdf')
+    plt.savefig(f"{title} Pass_vs_Fail_plt.pdf")
     return 1
 
 # Example usage
 if __name__ == "__main__":
-    
-    # MBPP Train
-    data_1 = load_saved_data("mbpp_train copy.json")
+    parser = argparse.ArgumentParser(description="Specify the data folder location.")
+    parser.add_argument(
+        "-d", "--data-folder",
+        type=str,
+        default=os.getcwd(), 
+        help="Path to the data folder (default: current directory)"
+    )
+    args = parser.parse_args()
 
-    # MBPP Test
-    data_2 = load_saved_data("mbpp_test copy.json")
+    data_folder = args.data_folder
 
-    # HumanEval Test
-    data_3 = load_saved_data("output_2 copy.json")
+    if not os.path.isdir(data_folder):
+        print(f"Warning: {data_folder} is not a valid directory. Using the current directory instead.")
+        data_folder = os.getcwd()
 
+    print(f"Using data folder: {data_folder}")
+    print(f"Files in the folder: {os.listdir(data_folder)}")
 
-    if data_1 and data_2:
-        # Clear up Code + Testing + Mink_plus_plus
-        data_1 = apply_on_dataset(data_1)
-        data_2 = apply_on_dataset(data_2)
-        data_3 = apply_on_dataset(data_3)
+    try:
+        # MBPP Train
+        data_1 = load_saved_data(os.path.join(data_folder, "mbpp_train.json"))
+        
+        # MBPP Test
+        data_2 = load_saved_data(os.path.join(data_folder, "mbpp_test.json"))
+        
+        # WARNING !!! - Had to remove 127 generated code as it stucks whole pipeline
+        removed_element = data_2.pop(127)
+        print(removed_element)
+        
+        # HumanEval Test
+        data_3 = load_saved_data(os.path.join(data_folder, "OpenAI_HumanEval_test.json"))
+        
+        print("Data successfully loaded!")
+        
+    except Exception as e:
+        print(f"An error occurred while loading data: {e}")
+
+    if data_1 and data_2 and data_3:
+        with tqdm(total=3, desc="Clear, Test, Calc Mink on Dataset") as pbar:
+            # Clear up Code + Testing + Mink_plus_plus
+            data_1 = apply_on_dataset(data_1)
+            pbar.update(1)
+            
+            data_2 = apply_on_dataset(data_2)
+            pbar.update(1)
+            
+            data_3 = apply_on_dataset(data_3)
+            pbar.update(1)
 
         # MBPP | Train | Pass vs Fail 
-        plot_d_pass_vs_fail(data_1, title="MBPP_train")
+        plot_d_pass_vs_fail(data_1, title="01_MBPP_train")
 
         # MBPP | Test | Pass vs Fail 
-        plot_d_pass_vs_fail(data_2, title="MBPP_test")
+        plot_d_pass_vs_fail(data_2, title="01_MBPP_test")
 
         # MBPP | Train vs Test
-        plot_distributions_two_datasets(data_1, data_2, title="MBPP_train vs Mbpp_test", legend_labels=("Mbpp_train", "Mbpp_test"))
+        plot_distributions_two_datasets(data_1, data_2, title="02_MBPP_train vs Mbpp_test", legend_labels=("Mbpp_train", "Mbpp_test"))
 
         # MBPP | Train vs HumanEval | Test
-        plot_distributions_two_datasets(data_1, data_3, title="MBPP_train vs HumanEval_test", legend_labels=("Mbpp_train", "OpenAI HumanEval_test"))
+        plot_distributions_two_datasets(data_1, data_3, title="03_MBPP_train vs HumanEval_test", legend_labels=("Mbpp_train", "OpenAI HumanEval_test"))
 
         print(f"Mbpp_train: {success_rate(data_1):.2%}\nMbpp_test: {success_rate(data_2):.2%}\nOpenAI HumanEval_test: {success_rate(data_3):.2%}")
 
