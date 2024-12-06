@@ -288,18 +288,23 @@ if __name__ == "__main__":
     print(f"Files in the folder: {os.listdir(data_folder)}")
 
     try:
+        # QWEN
         # MBPP Train
-        data_1 = load_saved_data(os.path.join(data_folder, "mbpp_train.json"))
+        data_1 = load_saved_data(os.path.join(data_folder, "qwen_mbpp_train.json"))
         
         # MBPP Test
-        data_2 = load_saved_data(os.path.join(data_folder, "mbpp_test.json"))
+        data_2 = load_saved_data(os.path.join(data_folder, "qwen_mbpp_test.json"))
         
         # WARNING !!! - Had to remove 127 generated code as it stucks whole pipeline
         removed_element = data_2.pop(127)
         print(removed_element)
         
-        # HumanEval Test
-        data_3 = load_saved_data(os.path.join(data_folder, "OpenAI_HumanEval_test.json"))
+        # PYTHIA
+        # MBPP Train
+        data_3 = load_saved_data(os.path.join(data_folder, "pythia_mbpp_train.json"))
+        
+        # MBPP Test
+        data_4 = load_saved_data(os.path.join(data_folder, "pythia_mbpp_test.json"))
         
         print("Data successfully loaded!")
         
@@ -307,7 +312,7 @@ if __name__ == "__main__":
         print(f"An error occurred while loading data: {e}")
 
     if data_1 and data_2 and data_3:
-        with tqdm(total=3, desc="Clear, Test, Calc Mink on Dataset") as pbar:
+        with tqdm(total=4, desc="Clear, Test, Calc Mink on Dataset") as pbar:
             # Clear up Code + Testing + Mink_plus_plus
             data_1 = apply_on_dataset(data_1)
             pbar.update(1)
@@ -318,19 +323,40 @@ if __name__ == "__main__":
             data_3 = apply_on_dataset(data_3)
             pbar.update(1)
 
+            data_4 = apply_on_dataset(data_4)
+            pbar.update(1)
+
+        # QWEN
         # MBPP | Train | Pass vs Fail 
-        plot_d_pass_vs_fail(data_1, title="01_MBPP_train")
+        plot_d_pass_vs_fail(data_1, title="qwen_01_MBPP_train")
 
         # MBPP | Test | Pass vs Fail 
-        plot_d_pass_vs_fail(data_2, title="01_MBPP_test")
+        plot_d_pass_vs_fail(data_2, title="qwen_01_MBPP_test")
 
         # MBPP | Train vs Test
-        plot_distributions_two_datasets(data_1, data_2, title="02_MBPP_train vs Mbpp_test", legend_labels=("Mbpp_train", "Mbpp_test"))
+        plot_distributions_two_datasets(data_1, data_2, title="qwen_02_MBPP_train vs Mbpp_test", legend_labels=("Mbpp_train", "Mbpp_test"))
+        
+        
 
-        # MBPP | Train vs HumanEval | Test
-        plot_distributions_two_datasets(data_1, data_3, title="03_MBPP_train vs HumanEval_test", legend_labels=("Mbpp_train", "OpenAI HumanEval_test"))
+        # Pythia
+        # MBPP | Train | Pass vs Fail 
+        plot_d_pass_vs_fail(data_3, title="pythia_01_MBPP_train")
 
-        print(f"Mbpp_train: {success_rate(data_1):.2%}\nMbpp_test: {success_rate(data_2):.2%}\nOpenAI HumanEval_test: {success_rate(data_3):.2%}")
+        # MBPP | Test | Pass vs Fail 
+        plot_d_pass_vs_fail(data_4, title="pythia_01_MBPP_test")
+
+        # MBPP | Train vs Test
+        plot_distributions_two_datasets(data_3, data_4, title="pythia_02_MBPP_train vs Mbpp_test", legend_labels=("Mbpp_train", "Mbpp_test"))
+
+
+
+        # PYTHIA train vs QWEN train
+        plot_distributions_two_datasets(data_1, data_3, title="03_PYTHIA train vs QWEN train", legend_labels=("QWEN", "PYTHIA"))
+
+        # PYTHIA test vs QWEN test
+        plot_distributions_two_datasets(data_2, data_4, title="03_PYTHIA test vs QWEN test", legend_labels=("QWEN", "PYTHIA"))
+        
+        print(f"QWEN_train: {success_rate(data_1):.2%}\nQwen_test: {success_rate(data_2):.2%}\nPythia_train: {success_rate(data_3):.2%}\nPythia_test: {success_rate(data_3):.2%}")
 
 
 
